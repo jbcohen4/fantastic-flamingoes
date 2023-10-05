@@ -67,15 +67,7 @@ static int producer(void *data)
 }
 
 // Consumer function
-static int consumer(void *data)
-{
-    // implement the consumer
-    // read task_struct from buffer
-    // calculate elapsed time
-    // print log messages
-    // ...
-    return 0;
-}
+static u64 total_elapsed_time = 0;
 
 static int __init producer_consumer_init(void)
 {
