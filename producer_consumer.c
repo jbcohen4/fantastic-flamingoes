@@ -7,11 +7,6 @@
 #include <linux/semaphore.h>
 #include <linux/timekeeping.h>
 
-// Module Metadata
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your Name");
-MODULE_DESCRIPTION("A producer-consumer kernel module");
-MODULE_VERSION("0.1");
 
 // Module Parameters
 static int buffSize;
