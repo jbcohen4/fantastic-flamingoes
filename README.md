@@ -1,2 +1,5 @@
-# fantastic-flamingoes
-The best repo
+#### Fantastic Flamingos Project 2
+###### Featuring:
+Ben Hanson
+Elise Macabou
+Joe Cohen
