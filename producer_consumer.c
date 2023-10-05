@@ -69,6 +69,41 @@ static int producer(void *data)
 // Consumer function
 static u64 total_elapsed_time = 0;
 
+static int consumer(void *data) {
+    struct task_struct *task;
+    u64 elapsed_time;
+
+    while (!kthread_should_stop()) {
+        if (down_interruptible(&full))
+            break; // exit the loop if signal received
+
+        if (down_interruptible(&mutex))
+            break; // exit the loop if signal received
+
+        // Read from the buffer
+        task = buffer[out];
+        out = (out + 1) % buffSize;  // Circular buffer
+
+        up(&mutex);
+
+        // Signal that a buffer slot has become empty
+        up(&empty);
+
+        // Calculate elapsed time
+        elapsed_time = ktime_get_ns() - task->start_time;
+        elapsed_time /= 1000000000;  // Convert to seconds
+
+        // Update total elapsed time
+        total_elapsed_time += elapsed_time;
+
+        // Log the consumed item and elapsed time
+        printk(KERN_INFO "[Consumer-%d] Consumed Item#-%d on buffer index:%d PID:%d Elapsed Time-%llu\n",
+               (int) data, out, out, task->pid, elapsed_time);
+    }
+
+    return 0;
+}
+
 static int __init producer_consumer_init(void)
 {
     printk(KERN_INFO "Initializing producer-consumer module\n");
