@@ -23,7 +23,7 @@ struct semaphore empty;
 struct semaphore full;
 
 // Shared Buffer
-struct task_struct *buffer[buffSize]; // Adjust this as needed
+struct task_struct **buffer; // Adjust this as needed
 int in, out;
 
 static int num_producers_active, num_consumers_active;
@@ -126,6 +126,7 @@ static int consumer(void *data)
 
 static int __init producer_consumer_init(void)
 {
+    buffer = (struct task_struct **) malloc(buffSize * sizeof(struct task_struct *));
     global_kill_flag = 0;
     printk(KERN_INFO "Initializing producer-consumer module\n");
 
