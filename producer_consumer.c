@@ -10,7 +10,7 @@
 
 // Module Parameters
 MODULE_LICENSE("GPL");
-// Module Liscense
+// Module License
 static int buffSize;
 static int prod;
 static int cons;
@@ -36,42 +36,40 @@ int in, out;
 static int producer(void *data)
 {
     struct task_struct *task;
-    while (!kthread_should_stop())
+
+    for_each_process(task)
     {
+        // Attempt to acquire the empty semaphore. If not available or interrupted, break out of the loop.
+        if (down_interruptible(&empty))
+            break;
 
-        for_each_process(task)
+        // Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
+        if (down_interruptible(&mutex))
         {
-            // Attempt to acquire the empty semaphore. If not available or interrupted, break out of the loop.
-            if (down_interruptible(&empty))
-                break;
-
-            // Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
-            if (down_interruptible(&mutex))
-            {
-                up(&empty);
-                break;
-            }
-
-            // Critical Section: Add tasks with UID == uuid
-            if (task->cred->uid.val == uuid)
-            {
-                buffer[in] = task;
-                printk(KERN_INFO "[Producer] Produced Item at buffer index: %d for PID: %d", in, task->pid);
-                in = (in + 1) % buffSize;
-
-                // Signal that the buffer has an item.
-                up(&full);
-            }
-            else
-            {
-                // If task was not added to the buffer, release the empty semaphore.
-                up(&empty);
-            }
-
-            // Release the mutex semaphore.
-            up(&mutex);
+            up(&empty);
+            break;
         }
+
+        // Critical Section: Add tasks with UID == uuid
+        if (task->cred->uid.val == uuid)
+        {
+            buffer[in] = task;
+            printk(KERN_INFO "[Producer] Produced Item at buffer index: %d for PID: %d", in, task->pid);
+            in = (in + 1) % buffSize;
+
+            // Signal that the buffer has an item.
+            up(&full);
+        }
+        else
+        {
+            // If task was not added to the buffer, release the empty semaphore.
+            up(&empty);
+        }
+
+        // Release the mutex semaphore.
+        up(&mutex);
     }
+
     return 0;
 }
 
