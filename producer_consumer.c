@@ -80,6 +80,7 @@ static u64 total_elapsed_time = 0;
 
 static int consumer(void *data)
 {
+    int consumer_id = (int)(uintptr_t)data;
     struct task_struct *task;
     u64 elapsed_time;
 
@@ -112,7 +113,7 @@ static int consumer(void *data)
 
         // Log the consumed item and elapsed time
         printk(KERN_INFO "[Consumer-%d] Consumed Item#-%d on buffer index:%d PID:%d Elapsed Time-%llu\n",
-               (int)data, out, out, task->pid, elapsed_time);
+               consumer_id, out, out, task->pid, elapsed_time);
     }
 
     return 0;
@@ -162,7 +163,7 @@ static int __init producer_consumer_init(void)
     // Create Consumer Threads
     for (int i = 0; i < cons; ++i)
     {
-        cons_threads[i] = kthread_run(consumer, NULL, "consumer-thread-%d", i);
+        cons_threads[i] = kthread_run(consumer, (void *)(uintptr_t)i, "consumer-thread-%d", i);
         if (IS_ERR(cons_threads[i]))
         {
             printk(KERN_INFO "Error creating consumer thread %d\n", i);
