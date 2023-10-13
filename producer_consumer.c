@@ -8,6 +8,8 @@
 #include <linux/timekeeping.h>
 
 // Module Parameters
+MODULE_LICENSE("GPL");
+// Module Liscense
 static int buffSize;
 static int prod;
 static int cons;
@@ -17,7 +19,7 @@ module_param(prod, int, 0);
 module_param(cons, int, 0);
 module_param(uuid, int, 0);
 static struct task_struct *prod_thread = NULL; // Producer thread
-static struct task_struct *cons_threads[cons]; // Array of consumer threads
+static struct task_struct **cons_threads;      // Array of consumer threads
 
 // Semaphores
 struct semaphore mutex;
@@ -25,7 +27,7 @@ struct semaphore empty;
 struct semaphore full;
 
 // Shared Buffer
-struct task_struct *buffer[buffSize]; // Adjust this as needed
+struct task_struct **buffer; // Adjust this as needed
 int in, out;
 
 // Producer function
@@ -46,6 +48,7 @@ static int producer(void *data)
             // Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
             if (down_interruptible(&mutex))
             {
+                up(&empty);
                 break;
             }
 
@@ -86,7 +89,10 @@ static int consumer(void *data)
             break; // exit the loop if interrupt signal received
 
         if (down_interruptible(&mutex))
-            break; // exit the loop if signal received
+        {
+            up(&full); // release the full semaphore if interrupted
+            break;     // exit the loop if signal received
+        }
 
         // Read from the buffer
         task = buffer[out];
@@ -116,6 +122,10 @@ static int __init producer_consumer_init(void)
 {
     printk(KERN_INFO "Initializing producer-consumer module\n");
 
+    // Allocate memory for the buffer and consumer threads
+    buffer = kmalloc(buffSize * sizeof(struct task_struct *), GFP_KERNEL);
+    cons_threads = kmalloc(cons * sizeof(struct task_struct *), GFP_KERNEL);
+
     // Initialize buffer index variables
     in = 0;
     out = 0;
@@ -140,10 +150,10 @@ static int __init producer_consumer_init(void)
     for (int i = 0; i < cons; ++i)
     {
         cons_threads[i] = kthread_run(consumer, NULL, "consumer-thread-%d", i);
-        if (IS_ERR(cons_thread))
+        if (IS_ERR(cons_threads[i]))
         {
             printk(KERN_INFO "Error creating consumer thread %d\n", i);
-            return PTR_ERR(cons_thread);
+            return PTR_ERR(cons_threads[i]);
         }
     }
 
@@ -156,13 +166,19 @@ static void __exit producer_consumer_exit(void)
 
     // Stop all the threads
     if (prod_thread && !IS_ERR(prod_thread))
+    {
         kthread_stop(prod_thread);
+    }
 
     for (int i = 0; i < cons; i++)
     {
         if (cons_threads[i] && !IS_ERR(cons_threads[i]))
             kthread_stop(cons_threads[i]);
     }
+
+    // Free the memory
+    kfree(buffer);
+    kfree(cons_threads);
 
     // Calculate and print total elapsed time
     printk(KERN_INFO "Total elapsed time: %llu\n", total_elapsed_time);
