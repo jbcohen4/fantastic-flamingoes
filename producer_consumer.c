@@ -27,6 +27,7 @@ struct task_struct *buffer[100]; // Adjust this as needed
 int in, out;
 
 static int num_producers_active, num_consumers_active;
+static int global_kill_flag;
 
 
 // Producer function
@@ -41,14 +42,14 @@ static int producer(void *data)
         // Attempt to acquire the empty semaphore. If not available or interrupted, break out of the loop.
         if (down_interruptible(&empty))
             break;
-        if (kthread_should_stop()){ // only true when the entire program is going to end
+        if (global_kill_flag){ // only true when the entire program is going to end
             break;
         }
 
         // Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
         if (down_interruptible(&mutex))
             break;
-        if (kthread_should_stop()){ // only true when the entire program is going to end
+        if (global_kill_flag){ // only true when the entire program is going to end
             break;
         }
 
@@ -85,17 +86,17 @@ static int consumer(void *data)
     u64 elapsed_time;
     
 
-    while (!kthread_should_stop())
+    while (!global_kill_flag)
     {
         if (down_interruptible(&full))
             break; // exit the loop if interrupt signal received
-        if (kthread_should_stop()){ // only true when the entire program is going to end
+        if (global_kill_flag){ // only true when the entire program is going to end
             break;
         }
 
         if (down_interruptible(&mutex))
             break; // exit the loop if signal received
-        if (kthread_should_stop()){ // only true when the entire program is going to end
+        if (global_kill_flag){ // only true when the entire program is going to end
             break;
         }
 
@@ -125,6 +126,7 @@ static int consumer(void *data)
 
 static int __init producer_consumer_init(void)
 {
+    global_kill_flag = 0;
     printk(KERN_INFO "Initializing producer-consumer module\n");
 
     // Initialize buffer index variables
@@ -165,6 +167,7 @@ static int __init producer_consumer_init(void)
 
 static void __exit producer_consumer_exit(void)
 {
+    global_kill_flag = 1;
     printk(KERN_INFO "Exiting producer-consumer module\n");
 
 
