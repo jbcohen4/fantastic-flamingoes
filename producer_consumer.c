@@ -167,15 +167,12 @@ static void __exit producer_consumer_exit(void)
 {
     printk(KERN_INFO "Exiting producer-consumer module\n");
 
-    // Signal all the semaphores many times so that all threads will stop waiting
-    for(int i = 0; i < 100; i++){
-        up(&empty);
-        up(&full);
-        up(&mutex);
-    }
 
     while(num_producers_active != 0 || num_consumers_active != 0){
         // wait for those threads to finish
+        up(&empty);
+        up(&full);
+        up(&mutex);
     }
 
 
