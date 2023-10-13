@@ -106,13 +106,16 @@ static int consumer(void *data)
         // Calculate elapsed time
         elapsed_time = ktime_get_ns() - task->start_time;
         elapsed_time /= 1000000000; // Convert to seconds
-
+        u64 min = (elapsed_time % 3600) /60;
+	    u64 hours = elapsed_time /3600;
+        u64 seconds = elapsed_time % 60;
+        
         // Update total elapsed time
         total_elapsed_time += elapsed_time;
 
         // Log the consumed item and elapsed time
-        printk(KERN_INFO "[Consumer-%d] Consumed Item#-%d on buffer index:%d PID:%d Elapsed Time-%llu\n",
-               (int)data, out, out, task->pid, elapsed_time);
+        printk(KERN_INFO "[Consumer-%d] Consumed Item#-%d on buffer index:%d PID:%d Elapsed Time-%02llu:%02llu:%02llu\n",
+               (int)data, out, out, task->pid,  hours, min,seconds);
     }
 
     return 0;
@@ -194,7 +197,10 @@ static void __exit producer_consumer_exit(void)
     kfree(buffer);
 
     // Calculate and print total elapsed time
-    printk(KERN_INFO "Total elapsed time: %llu\n", total_elapsed_time);
+    u64 min = (total_elapsed_time % 3600) /60;
+	    u64 hours = total_elapsed_time /3600;
+        u64 seconds = total_elapsed_time % 60;
+    printk(KERN_INFO "Total elapsed time: %02llu:%02llu:%02llu\n", hours, min,seconds);
 }
 
 module_init(producer_consumer_init);
