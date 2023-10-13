@@ -23,7 +23,7 @@ struct semaphore empty;
 struct semaphore full;
 
 // Shared Buffer
-struct task_struct *buffer[100]; // Adjust this as needed
+struct task_struct *buffer[buffSize]; // Adjust this as needed
 int in, out;
 
 static int num_producers_active, num_consumers_active;
