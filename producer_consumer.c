@@ -16,6 +16,8 @@ module_param(buffSize, int, 0);
 module_param(prod, int, 0);
 module_param(cons, int, 0);
 module_param(uuid, int, 0);
+static struct task_struct *prod_thread = NULL; // Producer thread
+static struct task_struct *cons_threads[cons]; // Array of consumer threads
 
 // Semaphores
 struct semaphore mutex;
@@ -23,7 +25,7 @@ struct semaphore empty;
 struct semaphore full;
 
 // Shared Buffer
-struct task_struct *buffer[100]; // Adjust this as needed
+struct task_struct *buffer[buffSize]; // Adjust this as needed
 int in, out;
 
 // Producer function
@@ -126,7 +128,6 @@ static int __init producer_consumer_init(void)
     // Create Producer Thread if required
     if (prod == 1)
     {
-        struct task_struct *prod_thread;
         prod_thread = kthread_run(producer, NULL, "producer-thread");
         if (IS_ERR(prod_thread))
         {
@@ -138,8 +139,7 @@ static int __init producer_consumer_init(void)
     // Create Consumer Threads
     for (int i = 0; i < cons; ++i)
     {
-        struct task_struct *cons_thread;
-        cons_thread = kthread_run(consumer, NULL, "consumer-thread-%d", i);
+        cons_threads[i] = kthread_run(consumer, NULL, "consumer-thread-%d", i);
         if (IS_ERR(cons_thread))
         {
             printk(KERN_INFO "Error creating consumer thread %d\n", i);
@@ -154,16 +154,15 @@ static void __exit producer_consumer_exit(void)
 {
     printk(KERN_INFO "Exiting producer-consumer module\n");
 
-    // Signal all the semaphores
-    up(&empty);
-    up(&full);
-    up(&mutex);
+    // Stop all the threads
+    if (prod_thread && !IS_ERR(prod_thread))
+        kthread_stop(prod_thread);
 
-    // Stop all the threads (assuming you've named them producer_thread and consumer_thread)
-    if (producer_thread)
-        kthread_stop(producer_thread);
-    if (consumer_thread)
-        kthread_stop(consumer_thread);
+    for (int i = 0; i < cons; i++)
+    {
+        if (cons_threads[i] && !IS_ERR(cons_threads[i]))
+            kthread_stop(cons_threads[i]);
+    }
 
     // Calculate and print total elapsed time
     printk(KERN_INFO "Total elapsed time: %llu\n", total_elapsed_time);
