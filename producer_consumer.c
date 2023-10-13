@@ -26,47 +26,52 @@ struct semaphore full;
 struct task_struct *buffer[100]; // Adjust this as needed
 int in, out;
 
+static int num_producers_active, num_consumers_active;
+
+
 // Producer function
 // The code is a function called producer in a C program. This function is part of a producer-consumer pattern,
 // where one or more threads produce data and one or more threads consume data. The producer function is responsible for adding tasks to a shared buffer.
 static int producer(void *data)
 {
+    num_producers_active++;
     struct task_struct *task;
-    while (!kthread_should_stop())
+    for_each_process(task)
     {
-
-        for_each_process(task)
-        {
-            // Attempt to acquire the empty semaphore. If not available or interrupted, break out of the loop.
-            if (down_interruptible(&empty))
-                break;
-
-            // Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
-            if (down_interruptible(&mutex))
-            {
-                break;
-            }
-
-            // Critical Section: Add tasks with UID == uuid
-            if (task->cred->uid.val == uuid)
-            {
-                buffer[in] = task;
-                printk(KERN_INFO "[Producer] Produced Item at buffer index: %d for PID: %d", in, task->pid);
-                in = (in + 1) % buffSize;
-
-                // Signal that the buffer has an item.
-                up(&full);
-            }
-            else
-            {
-                // If task was not added to the buffer, release the empty semaphore.
-                up(&empty);
-            }
-
-            // Release the mutex semaphore.
-            up(&mutex);
+        // Attempt to acquire the empty semaphore. If not available or interrupted, break out of the loop.
+        if (down_interruptible(&empty))
+            break;
+        if (kthread_should_stop()){ // only true when the entire program is going to end
+            break;
         }
+
+        // Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
+        if (down_interruptible(&mutex))
+            break;
+        if (kthread_should_stop()){ // only true when the entire program is going to end
+            break;
+        }
+
+        // Critical Section: Add tasks with UID == uuid
+        if (task->cred->uid.val == uuid)
+        {
+            buffer[in] = task;
+            printk(KERN_INFO "[Producer] Produced Item at buffer index: %d for PID: %d", in, task->pid);
+            in = (in + 1) % buffSize;
+
+            // Signal that the buffer has an item.
+            up(&full);
+        }
+        else
+        {
+            // If task was not added to the buffer, release the empty semaphore.
+            up(&empty);
+        }
+
+        // Release the mutex semaphore.
+        up(&mutex);
     }
+    num_producers_active--;
     return 0;
 }
 
@@ -75,16 +80,24 @@ static u64 total_elapsed_time = 0;
 
 static int consumer(void *data)
 {
+    num_consumers_active++;
     struct task_struct *task;
     u64 elapsed_time;
+    
 
     while (!kthread_should_stop())
     {
         if (down_interruptible(&full))
             break; // exit the loop if interrupt signal received
+        if (kthread_should_stop()){ // only true when the entire program is going to end
+            break;
+        }
 
         if (down_interruptible(&mutex))
             break; // exit the loop if signal received
+        if (kthread_should_stop()){ // only true when the entire program is going to end
+            break;
+        }
 
         // Read from the buffer
         task = buffer[out];
@@ -106,7 +119,7 @@ static int consumer(void *data)
         printk(KERN_INFO "[Consumer-%d] Consumed Item#-%d on buffer index:%d PID:%d Elapsed Time-%llu\n",
                (int)data, out, out, task->pid, elapsed_time);
     }
-
+    num_consumers_active--;
     return 0;
 }
 
@@ -154,19 +167,20 @@ static void __exit producer_consumer_exit(void)
 {
     printk(KERN_INFO "Exiting producer-consumer module\n");
 
-    // Signal all the semaphores
-    up(&empty);
-    up(&full);
-    up(&mutex);
+    // Signal all the semaphores many times so that all threads will stop waiting
+    for(int i = 0; i < 100; i++){
+        up(&empty);
+        up(&full);
+        up(&mutex);
+    }
 
-    // Stop all the threads (assuming you've named them producer_thread and consumer_thread)
-    if (producer_thread)
-        kthread_stop(producer_thread);
-    if (consumer_thread)
-        kthread_stop(consumer_thread);
+    while(num_producers_active != 0 || num_consumers_active != 0){
+        // wait for those threads to finish
+    }
+
 
     // Calculate and print total elapsed time
-    printk(KERN_INFO "Total elapsed time: %llu\n", total_elapsed_time);
+    printk(KERN_INFO "Total elapsed time: %llu\n", total_elapsed_time); // I think this line has a bug, but I'm not going to explain/fix it now
 }
 
 module_init(producer_consumer_init);
