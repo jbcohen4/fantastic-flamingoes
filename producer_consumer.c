@@ -1,4 +1,5 @@
 #include <linux/init.h>
+#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -19,15 +20,14 @@ module_param(prod, int, 0);
 module_param(cons, int, 0);
 module_param(uuid, int, 0);
 static struct task_struct *prod_thread = NULL; // Producer thread
-static struct task_struct **cons_threads;      // Array of consumer threads
-
+static struct task_struct **cons_threads = NULL;
 // Semaphores
 struct semaphore mutex;
 struct semaphore empty;
 struct semaphore full;
 
 // Shared Buffer
-struct task_struct **buffer; // Adjust this as needed
+static struct task_struct **buffer = NULL;
 int in, out;
 
 // Producer function
@@ -122,9 +122,22 @@ static int __init producer_consumer_init(void)
 {
     printk(KERN_INFO "Initializing producer-consumer module\n");
 
-    // Allocate memory for the buffer and consumer threads
-    buffer = kmalloc(buffSize * sizeof(struct task_struct *), GFP_KERNEL);
-    cons_threads = kmalloc(cons * sizeof(struct task_struct *), GFP_KERNEL);
+    // Allocate memory for cons_threads based on the cons value
+    cons_threads = kmalloc(sizeof(struct task_struct *) * cons, GFP_KERNEL);
+    if (!cons_threads)
+    {
+        printk(KERN_INFO "Error allocating memory for consumer threads\n");
+        return -ENOMEM;
+    }
+
+    // Allocate memory for buffer based on the buffSize value
+    buffer = kmalloc(sizeof(struct task_struct *) * buffSize, GFP_KERNEL);
+    if (!buffer)
+    {
+        printk(KERN_INFO "Error allocating memory for buffer\n");
+        kfree(cons_threads); // Free memory allocated for consumer threads before returning
+        return -ENOMEM;
+    }
 
     // Initialize buffer index variables
     in = 0;
@@ -176,9 +189,9 @@ static void __exit producer_consumer_exit(void)
             kthread_stop(cons_threads[i]);
     }
 
-    // Free the memory
-    kfree(buffer);
+    // Free dynamically allocated memory
     kfree(cons_threads);
+    kfree(buffer);
 
     // Calculate and print total elapsed time
     printk(KERN_INFO "Total elapsed time: %llu\n", total_elapsed_time);
