@@ -15,12 +15,16 @@ static int buffSize;
 static int prod;
 static int cons;
 static int uuid;
+
 module_param(buffSize, int, 0);
 module_param(prod, int, 0);
 module_param(cons, int, 0);
 module_param(uuid, int, 0);
+
+
 static struct task_struct *prod_thread = NULL; // Producer thread
 static struct task_struct **cons_threads = NULL;
+
 // Semaphores
 struct semaphore mutex;
 struct semaphore empty;
@@ -35,41 +39,44 @@ int in, out;
 // where one or more threads produce data and one or more threads consume data. The producer function is responsible for adding tasks to a shared buffer.
 static int producer(void *data)
 {
-    struct task_struct *task;
-
-    for_each_process(task)
+   struct task_struct *task;
+    
+   for_each_process(task)
     {
-        // Attempt to acquire the empty semaphore. If not available or interrupted, break out of the loop.
-        if (down_interruptible(&empty))
-            break;
+	// Attempt to acquire the empty semaphore. If not available or interrupted, break out of the loop.
+	if (down_interruptible(&empty))
+	    break;
 
-        // Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
-        if (down_interruptible(&mutex))
-        {
-            up(&empty);
-            break;
-        }
+	// Attempt to acquire the mutex semaphore. If interrupted, release the empty semaphore and move to next process.
+	if (down_interruptible(&mutex))
+	{
+	    up(&empty);
+	    break;
+	}
 
-        // Critical Section: Add tasks with UID == uuid
-        if (task->cred->uid.val == uuid)
-        {
-            buffer[in] = task;
-            printk(KERN_INFO "[Producer] Produced Item at buffer index: %d for PID: %d", in, task->pid);
-            in = (in + 1) % buffSize;
+	// Critical Section: Add tasks with UID == uuid
+	if (task->cred->uid.val == uuid)
+	{
+	    buffer[in] = task;
+	    printk(KERN_INFO "[Producer] Produced Item at buffer index: %d for PID: %d", in, task->pid);
+	    in = (in + 1) % buffSize;
 
-            // Signal that the buffer has an item.
-            up(&full);
-        }
-        else
-        {
-            // If task was not added to the buffer, release the empty semaphore.
-            up(&empty);
-        }
+	    // Signal that the buffer has an item.
+	    up(&full);
+	}
+	else
+	{
+	    // If task was not added to the buffer, release the empty semaphore.
+	    up(&empty);
+	}
 
-        // Release the mutex semaphore.
-        up(&mutex);
+	// Release the mutex semaphore.
+	up(&mutex);
     }
-
+    
+    while (!kthread_should_stop())
+    {
+    }
     return 0;
 }
 
@@ -101,16 +108,17 @@ static int consumer(void *data)
 
         // Signal that a buffer slot has become empty
         up(&empty);
-
-        // Calculate elapsed time
+        // Update total elapsed time
         elapsed_time = ktime_get_ns() - task->start_time;
+        total_elapsed_time += elapsed_time;
+        // Calculate elapsed time
+        
         elapsed_time /= 1000000000; // Convert to seconds
         u64 min = (elapsed_time % 3600) / 60;
         u64 hours = elapsed_time / 3600;
         u64 seconds = elapsed_time % 60;
 
-        // Update total elapsed time
-        total_elapsed_time += elapsed_time;
+       
 
         // Log the consumed item and elapsed time
         printk(KERN_INFO "[Consumer-%d] Consumed Item#-%d on buffer index:%d PID:%d Elapsed Time-%02llu:%02llu:%02llu\n",
@@ -122,7 +130,7 @@ static int consumer(void *data)
 
 static int __init producer_consumer_init(void)
 {
-    printk(KERN_INFO "Initializing producer-consumer module\n");
+    printk(KERN_INFO "\nInitializing producer-consumer module\n");
 
     // Allocate memory for cons_threads based on the cons value
     cons_threads = kmalloc(sizeof(struct task_struct *) * cons, GFP_KERNEL);
@@ -196,6 +204,7 @@ static void __exit producer_consumer_exit(void)
     kfree(buffer);
 
     // Calculate and print total elapsed time
+    total_elapsed_time /= 1000000000;
     u64 min = (total_elapsed_time % 3600) / 60;
     u64 hours = total_elapsed_time / 3600;
     u64 seconds = total_elapsed_time % 60;
