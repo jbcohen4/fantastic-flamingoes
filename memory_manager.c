@@ -32,5 +32,8 @@ static void __exit memory_manager_exit(void)
     printk(KERN_INFO "Exiting producer-consumer module\n");
 }
 
-module_init(producer_consumer_init);
-module_exit(producer_consumer_exit);
+
+
+
+module_init(memory_manager_init);
+module_exit(memory_manager_exit);
