@@ -8,13 +8,13 @@
 
 // Define module metadata
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your Name");
+/*MODULE_AUTHOR("Your Name");
 MODULE_DESCRIPTION("Memory Manager Module for CSE 330 Project 3");
-MODULE_VERSION("0.1");
+MODULE_VERSION("0.1");*/
 
 static int pid = -1; // Default to an invalid PID
 module_param(pid, int, 0644); // Register pid as module parameter
-MODULE_PARM_DESC(pid, "Process ID");
+//MODULE_PARM_DESC(pid, "Process ID");
 
 // Function to check and clear the accessed bit of a PTE
 static int my_ptep_test_and_clear_young(struct vm_area_struct *vma, unsigned long addr, pte_t *ptep) {
