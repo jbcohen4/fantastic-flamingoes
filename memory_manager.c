@@ -3,6 +3,7 @@
 #include <linux/init.h>         // Needed for the macros
 #include <linux/sched.h>        // Needed for task_struct and current
 #include <linux/mm.h>           // Needed for mm_struct
+#include <linux/mm_types.h>     // Needed for mm_struct
 #include <linux/hrtimer.h>      // Needed for high-resolution timers
 #include <linux/ktime.h>        // Needed for ktime_* functions
 
