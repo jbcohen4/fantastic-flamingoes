@@ -1,7 +1,10 @@
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/pid.h>
-#include <linux/sched.h>
+#include <linux/module.h>       // Needed by all modules
+#include <linux/kernel.h>       // Needed for KERN_INFO
+#include <linux/init.h>         // Needed for the macros
+#include <linux/sched.h>        // Needed for task_struct and current
+#include <linux/mm.h>           // Needed for mm_struct
+#include <linux/hrtimer.h>      // Needed for high-resolution timers
+#include <linux/ktime.h>        // Needed for ktime_* functions
 
 static int pid;
 module_param(pid, int, 0);
