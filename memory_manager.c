@@ -41,9 +41,9 @@ typedef struct {
 
 static MemoryMeasure get_memory_usage(struct task_struct *task) {
     MemoryMeasure result;
-    mem.rss = 0;
-    mem.swap = 0;
-    mem.wss = 0;
+    result.rss = 0;
+    result.swap = 0;
+    result.wss = 0;
 
     struct mm_struct *mm = task->mm;
     struct vm_area_struct *vma = NULL;
