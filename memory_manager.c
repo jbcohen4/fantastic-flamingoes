@@ -11,6 +11,15 @@ module_param(pid, int, 0);
 
 MODULE_LICENSE("GPL");
 
+
+static int ptep_test_and_clear_young(struct vm_area_struct *vma, unsigned long addr, pte_t *ptep)
+{
+    int ret = 0;
+    if (pte_young(*ptep))
+        ret = test_and_clear_bit(_PAGE_BIT_ACCESSED,
+    return ret; 
+}
+
 static int __init memory_manager_init(void)
 {
     printk(KERN_INFO "\nInitializing memory-manager module\n");
