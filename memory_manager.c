@@ -12,7 +12,7 @@ module_param(pid, int, 0);
 MODULE_LICENSE("GPL");
 
 
-static int ptep_test_and_clear_young(struct vm_area_struct *vma, unsigned long addr, pte_t *ptep)
+int ptep_test_and_clear_young(struct vm_area_struct *vma, unsigned long addr, pte_t *ptep)
 {
     int ret = 0;
     if (pte_young(*ptep))
