@@ -33,7 +33,6 @@ static int __init memory_manager_init(void)
     hrtimer_init(&hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
     hrtimer_start(&hr_timer, ktime, HRTIMER_MODE_REL);
 
-    // Other initialization work...
 
     return 0; // Return 0 for successful loading
 }
@@ -42,11 +41,11 @@ static int __init memory_manager_init(void)
 // Module cleanup function
 static void __exit memory_manager_exit(void)
 {
-    int ret;
+    // int ret;
 
-    ret = hrtimer_cancel(&hr_timer); // Cancel the high-resolution timer
-    if (ret)
-        printk(KERN_INFO "The timer was still in use...\n");
+    // ret = hrtimer_cancel(&hr_timer); // Cancel the high-resolution timer
+    // if (ret)
+    //     printk(KERN_INFO "The timer was still in use...\n");
     printk(KERN_INFO "Memory Manager Module unloaded.\n");
 
     // Other cleanup work...
@@ -64,8 +63,7 @@ static MemoryMeasure get_memory_usage(struct task_struct *task) {
     result.swap = 0;
     result.wss = 0;
 
-    struct mm_struct *mm;
-    mm = task->mm;
+    struct mm_struct *mm = task->mm;
     struct vm_area_struct *vma = NULL;
     pgd_t *pgd;
     p4d_t *p4d;
@@ -123,7 +121,7 @@ enum hrtimer_restart no_restart_callback(struct hrtimer *timer)
 	
     printk(KERN_INFO "It's working!\n");
 
-	return HRTIMER_RESTART;
+	return HRTIMER_NORESTART;
 }
 
 module_init(memory_manager_init);
