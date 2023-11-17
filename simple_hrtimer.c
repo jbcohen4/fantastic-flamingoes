@@ -35,3 +35,18 @@ static void __exit my_module_exit(void)
 
 module_init(my_module_init);
 module_exit(my_module_exit);
+
+
+
+
+// makefile
+// obj-m += your_module_name.o
+
+// all:
+// 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+
+// clean:
+// 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+
+
+
